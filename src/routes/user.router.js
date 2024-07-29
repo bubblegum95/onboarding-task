@@ -1,6 +1,7 @@
 import express from "express";
 import UserController from "../controllers/user.controller.js";
 import { prisma } from "../../prisma/prisma.js";
+import authenticateToken from "../middlewares/authenticate.token.middleware.js";
 
 const router = express.Router();
 const userController = new UserController(prisma);
