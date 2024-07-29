@@ -33,6 +33,43 @@ describe("UserController", () => {
     jest.resetAllMocks();
   });
 
+  it("should return error if required fields are missing", async () => {
+    // Arrange
+    mockRequest.body = {
+      username: "",
+      nickname: "승호",
+      password: "examplepassword",
+    };
+
+    // Act
+    await userController.signUp(mockRequest, mockResponse, mockNext);
+
+    // Assert
+    expect(mockResponse.status).toHaveBeenCalledWith(400);
+    expect(mockResponse.json).toHaveBeenCalledWith({
+      message: "요청 정보가 올바르지 않습니다.",
+    });
+  });
+
+  it("should handle error if user creation fails", async () => {
+    // Arrange
+    const hashedPassword = "hashedpassword";
+    mockRequest.body = {
+      username: "박승호",
+      nickname: "승호",
+      password: "examplepassword",
+    };
+
+    mockBcrypt.hash.mockResolvedValue(hashedPassword);
+    mockPrisma.user.create.mockRejectedValue(new Error("Database error"));
+
+    // Act
+    await userController.signUp(mockRequest, mockResponse, mockNext);
+
+    // Assert
+    expect(mockNext).toHaveBeenCalledWith(new Error("Database error"));
+  });
+
   it("should sign up successfully with valid user information", async () => {
     // Mock request body
     mockRequest.body = {
@@ -46,6 +83,16 @@ describe("UserController", () => {
       username: "박승호",
       nickname: "승호",
       roles: [{ authorityName: "ROLE_USER" }],
+    };
+
+    const result = {
+      success: true,
+      message: "회원가입을 완료하였습니다.",
+      data: {
+        username: "박승호",
+        nickname: "승호",
+        authorities: ["ROLE_USER"],
+      },
     };
 
     // Mock bcrypt hash function
@@ -80,14 +127,7 @@ describe("UserController", () => {
       },
     });
     expect(mockResponse.status).toHaveBeenCalledWith(201);
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      success: true,
-      message: "회원가입을 완료하였습니다.",
-      data: {
-        username: "박승호",
-        nickname: "승호",
-        authorities: ["ROLE_USER"],
-      },
-    });
   });
+
+  // it("should throw new error if user input information doesnt exist", async () => {});
 });

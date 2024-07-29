@@ -2,6 +2,13 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
 
+class CustomError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export default class UserController {
   constructor(prisma) {
     this.prisma = prisma;
@@ -12,13 +19,12 @@ export default class UserController {
       const { username, nickname, password } = req.body;
 
       if (!username || !nickname || !password) {
-        throw new Error("요청 정보가 올바르지 않습니다.");
+        throw new CustomError(400, "요청 정보가 올바르지 않습니다.");
       }
-      console.log(username, nickname);
-      // 비밀번호 해싱
+      // console.log(username, nickname);
+
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // 사용자 생성
       const user = await this.prisma.user.create({
         data: {
           username,
@@ -38,7 +44,9 @@ export default class UserController {
         },
       });
 
-      console.log("create user: ", user);
+      if (!user) {
+        throw new CustomError(500, "사용자 정보를 생성할 수 없습니다.");
+      }
 
       res.status(201).json({
         success: true,
@@ -59,7 +67,7 @@ export default class UserController {
       const { username, password } = req.body;
 
       if (!username || !password) {
-        throw new Error("로그인 요청 정보가 잘못되었습니다.");
+        throw new CustomError(400, "로그인 요청 정보가 잘못되었습니다.");
       }
 
       const user = await this.prisma.user.findUnique({
@@ -68,7 +76,8 @@ export default class UserController {
       });
 
       if (!user) {
-        throw new Error(
+        throw new CustomError(
+          400,
           "일치하는 사용자 정보가 없습니다. 이름을 확인해주세요.",
         );
       }
@@ -76,7 +85,7 @@ export default class UserController {
       const comparedPassword = await bcrypt.compare(password, user.password);
 
       if (!comparedPassword) {
-        throw new Error("비밀번호가 일치하지 않습니다.");
+        throw new CustomError(400, "비밀번호가 일치하지 않습니다.");
       }
 
       const payload = { username: user.username };
@@ -120,7 +129,7 @@ export default class UserController {
       const { refreshToken } = req.body;
 
       if (!refreshToken) {
-        throw new Error("리프레시 토큰이 없습니다.");
+        throw new CustomError(400, "리프레시 토큰이 없습니다.");
       }
 
       const payload = jwt.verify(
@@ -133,7 +142,7 @@ export default class UserController {
       });
 
       if (!user || user.refreshToken !== refreshToken) {
-        throw new Error("유효하지 않은 리프레시 토큰입니다.");
+        throw new CustomError(401, "유효하지 않은 리프레시 토큰입니다.");
       }
 
       const newAccessToken = this.generateAccessToken({

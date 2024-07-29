@@ -92,7 +92,11 @@ router.post("/token", userController.refreshToken);
 
 // 미들웨어 사용 예시
 router.get("/test", authenticateToken, (res, req) => {
-  res.json({ message: "검증 완료.", user: req.user });
+  res.json({
+    success: true,
+    message: "사용자 인증이 완료되었습니다.",
+    data: { user: req.user },
+  });
 });
 
 export default router;
