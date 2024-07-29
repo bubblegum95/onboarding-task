@@ -80,16 +80,71 @@ export default class UserController {
       }
 
       const payload = { username: user.username };
-      const secretKey = process.env.SECRET_KEY;
-      const options = { expiresIn: "10h" };
-      console.log("console.log: ", payload, secretKey, options);
-      const token = jwt.sign(payload, secretKey, options);
+      const accessToken = this.generateAccessToken(payload); // 토큰 발급
+      const refreshToken = this.generateRefreshToken(payload);
+
+      // Refresh token 저장
+      await this.prisma.user.update({
+        where: { username: user.username },
+        data: { refreshToken: refreshToken },
+      });
 
       res.status(200).json({
         success: true,
         message: "로그인하였습니다.",
         data: {
-          token: token,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  generateAccessToken(payload) {
+    const secretKey = process.env.ACCESS_TOKEN_SECRET;
+    const options = { expiresIn: "10m" };
+    return jwt.sign(payload, secretKey, options);
+  }
+
+  generateRefreshToken(payload) {
+    const secretKey = process.env.REFRESH_TOKEN_SECRET;
+    const options = { expiresIn: "7d" };
+    return jwt.sign(payload, secretKey, options);
+  }
+
+  // 새로운 access token 발급
+  refreshToken = async (req, res, next) => {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        throw new Error("리프레시 토큰이 없습니다.");
+      }
+
+      const payload = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
+
+      const user = await this.prisma.user.findUnique({
+        where: { username: payload.username },
+      });
+
+      if (!user || user.refreshToken !== refreshToken) {
+        throw new Error("유효하지 않은 리프레시 토큰입니다.");
+      }
+
+      const newAccessToken = this.generateAccessToken({
+        username: user.username,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "새로운 액세스 토큰이 발급되었습니다.",
+        data: {
+          accessToken: newAccessToken,
         },
       });
     } catch (err) {

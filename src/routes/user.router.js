@@ -87,5 +87,11 @@ router.post("/signup", userController.signUp);
  *         description: Internal server error.
  */
 router.post("/login", userController.login);
+router.post("/token", userController.refreshToken);
+
+// 미들웨어 사용 예시
+router.get("/test", authenticateToken, (res, req) => {
+  res.json({ message: "검증 완료.", user: req.user });
+});
 
 export default router;
