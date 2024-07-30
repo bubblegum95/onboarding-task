@@ -42,8 +42,34 @@ jobs:
       - name: Run tests
         run: npm test
 
-  deploy:
+  build:
     needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20.x"
+      - name: Install dependencies
+        run: npm install
+      - name: Stash local changes
+        run: git stash
+      - name: Pull latest changes
+        run: git pull origin main
+      - name: Apply stashed changes
+        run: git stash pop
+      - name: Commit and push changes
+        run: |
+          git add .
+          git commit -m "Apply stashed changes"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
