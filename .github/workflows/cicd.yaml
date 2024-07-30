@@ -89,9 +89,6 @@ jobs:
             # 프로젝트 디렉토리로 이동
             cd /home/ubuntu/onboarding-task
 
-            # GitHub에서 최신 코드를 가져옴
-            git pull
-
             # .env 파일 생성
             cat <<EOF > .env
             DATABASE_URL=${{ secrets.DATABASE_URL }}
