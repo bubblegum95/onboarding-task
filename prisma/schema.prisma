@@ -13,7 +13,7 @@ model User {
   nickname  String
   password  String
   roles     Role[]    @relation("UserRoles")
-  refreshToken string?
+  refreshToken String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
