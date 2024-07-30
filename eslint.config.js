@@ -12,8 +12,5 @@ export default [
         myCustomGlobal: "readonly",
       },
     },
-    rules: {
-      "example/rule1": "warn",
-    },
   },
 ];
