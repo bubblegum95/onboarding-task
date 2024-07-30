@@ -60,7 +60,12 @@ jobs:
       - name: Pull latest changes
         run: git pull origin main
       - name: Apply stashed changes
-        run: git stash pop
+        run: |
+          if git stash list | grep -q "stash@{0}"; then
+            git stash pop
+          else
+            echo "No stash entries found."
+          fi
       - name: Commit and push changes
         run: |
           git add .
