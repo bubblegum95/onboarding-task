@@ -66,6 +66,10 @@ jobs:
           else
             echo "No stash entries found."
           fi
+      - name: Configure Git user
+        run: |
+          git config --global user.email "a82727282@gmail.com"
+          git config --global user.name "Semin H"
       - name: Commit and push changes
         run: |
           git add .
