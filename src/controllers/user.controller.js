@@ -67,7 +67,7 @@ export default class UserController {
       const { username, password } = req.body;
 
       if (!username || !password) {
-        throw new CustomError(400, "로그인 요청 정보가 잘못되었습니다.");
+        throw new CustomError(400, "요청 정보가 올바르지 않습니다.");
       }
 
       const user = await this.prisma.user.findUnique({
@@ -117,7 +117,7 @@ export default class UserController {
     return jwt.sign(payload, secretKey, options);
   }
 
-  generateRefreshToken(payload) {
+  async generateRefreshToken(payload) {
     const secretKey = process.env.REFRESH_TOKEN_SECRET;
     const options = { expiresIn: "7d" };
     return jwt.sign(payload, secretKey, options);
@@ -140,10 +140,6 @@ export default class UserController {
       const user = await this.prisma.user.findUnique({
         where: { username: payload.username },
       });
-
-      if (!user || user.refreshToken !== refreshToken) {
-        throw new CustomError(401, "유효하지 않은 리프레시 토큰입니다.");
-      }
 
       const newAccessToken = this.generateAccessToken({
         username: user.username,

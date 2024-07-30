@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import UserController from "../controllers/user.controller";
 import { beforeEach, jest, describe, it, expect } from "@jest/globals";
 
@@ -7,6 +8,7 @@ const mockPrisma = {
   user: {
     create: jest.fn(),
     findUnique: jest.fn(),
+    update: jest.fn(),
   },
 };
 
@@ -16,16 +18,15 @@ const mockRequest = {
 
 const mockResponse = {
   status: jest.fn().mockReturnThis(),
-  json: jest.fn(),
+  json: jest.fn().mockReturnThis(),
 };
 
 const mockNext = jest.fn();
 
-// 개별 함수 모킹
 bcrypt.hash = jest.fn();
 bcrypt.compare = jest.fn();
+jwt.sign = jest.fn();
 
-// UserController 인스턴스 생성
 const userController = new UserController(mockPrisma);
 
 describe("UserController", () => {
@@ -45,10 +46,12 @@ describe("UserController", () => {
     await userController.signUp(mockRequest, mockResponse, mockNext);
 
     // Assert
-    expect(mockResponse.status).toHaveBeenCalledWith(400);
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      message: "요청 정보가 올바르지 않습니다.",
-    });
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 400,
+        message: "요청 정보가 올바르지 않습니다.",
+      }),
+    );
   });
 
   it("should handle error if user creation fails", async () => {
@@ -60,14 +63,15 @@ describe("UserController", () => {
       password: "examplepassword",
     };
 
-    mockBcrypt.hash.mockResolvedValue(hashedPassword);
+    bcrypt.hash.mockResolvedValue(hashedPassword);
     mockPrisma.user.create.mockRejectedValue(new Error("Database error"));
 
     // Act
     await userController.signUp(mockRequest, mockResponse, mockNext);
 
     // Assert
-    expect(mockNext).toHaveBeenCalledWith(new Error("Database error"));
+    expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+    expect(mockNext.mock.calls[0][0].message).toBe("Database error");
   });
 
   it("should sign up successfully with valid user information", async () => {
@@ -129,5 +133,157 @@ describe("UserController", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(201);
   });
 
-  // it("should throw new error if user input information doesnt exist", async () => {});
+  it("should return error if username or password is missing", async () => {
+    // Arrange
+    mockRequest.body = {
+      username: "testuser",
+      password: "",
+    };
+
+    // Act
+    await userController.login(mockRequest, mockResponse, mockNext);
+
+    // Assert
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 400,
+        message: "요청 정보가 올바르지 않습니다.",
+      }),
+    );
+  });
+
+  it("should return error if user does not exist", async () => {
+    // Arrange
+    mockRequest.body = {
+      username: "nonexistentuser",
+      password: "password",
+    };
+
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+
+    // Act
+    await userController.login(mockRequest, mockResponse, mockNext);
+
+    // Assert
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 400,
+        message: "일치하는 사용자 정보가 없습니다. 이름을 확인해주세요.",
+      }),
+    );
+  });
+
+  it("should return error if password is incorrect", async () => {
+    // Arrange
+    mockRequest.body = {
+      username: "testuser",
+      password: "wrongpassword",
+    };
+
+    const user = {
+      username: "testuser",
+      password: "hashedpassword",
+    };
+
+    mockPrisma.user.findUnique.mockResolvedValue(user);
+    bcrypt.compare.mockResolvedValue(false);
+
+    // Act
+    await userController.login(mockRequest, mockResponse, mockNext);
+
+    // Assert
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 400,
+        message: "비밀번호가 일치하지 않습니다.",
+      }),
+    );
+  });
+
+  it("should login successfully with valid credentials", async () => {
+    // Arrange
+    mockRequest.body = {
+      username: "testuser",
+      password: "correctpassword",
+    };
+
+    const user = {
+      username: "testuser",
+      password: "hashedpassword",
+    };
+
+    const payload = {
+      username: user.username,
+    };
+
+    const accessToken = "access.token";
+    const refreshToken = "refresh.token";
+
+    userController.generateAccessToken = jest.fn().mockReturnValue(accessToken);
+    userController.generateRefreshToken = jest
+      .fn()
+      .mockReturnValue(refreshToken);
+
+    mockPrisma.user.findUnique.mockResolvedValue(user);
+    await bcrypt.compare.mockResolvedValue(true);
+    mockPrisma.user.update.mockResolvedValue({ refreshToken });
+
+    // Act
+    await userController.login(mockRequest, mockResponse, mockNext);
+
+    // Assert
+    expect(bcrypt.compare).toHaveBeenCalledWith(
+      "correctpassword",
+      "hashedpassword",
+    );
+    expect(userController.generateAccessToken).toHaveBeenCalledWith(payload);
+    expect(userController.generateRefreshToken).toHaveBeenCalledWith(payload);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      where: { username: user.username },
+      data: { refreshToken },
+    });
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+  });
+
+  it("should handle error if refresh token is missing", async () => {
+    mockRequest.body = { refreshToken: null };
+
+    await userController.refreshToken(mockRequest, mockResponse, mockNext);
+
+    // Assert
+    expect(mockNext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 400,
+        message: "리프레시 토큰이 없습니다.",
+      }),
+    );
+  });
+
+  it("should successfully issues new signed access token", async () => {
+    Object.assign(mockRequest.body, { refreshToken: "refreshToken" });
+    const payload = { username: "username" };
+    const user = {
+      username: "username",
+      nickname: "nickname",
+      password: "hashedpassword",
+      refreshToken: "refreshToken",
+    };
+    const newAccessToken = "newAccessToken";
+    jwt.verify = jest.fn().mockReturnValue(payload);
+    userController.generateAccessToken = jest
+      .fn()
+      .mockReturnValue(newAccessToken);
+    mockPrisma.user.findUnique.mockResolvedValue(user);
+
+    await userController.refreshToken(mockRequest, mockResponse, mockNext);
+
+    expect(jwt.verify).toHaveBeenCalledWith(
+      "refreshToken",
+      process.env.REFRESH_TOKEN_SECRET,
+    );
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+      where: { username: payload.username },
+    });
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+  });
 });
