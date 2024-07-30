@@ -69,7 +69,7 @@ jobs:
             echo "DB_SYNC=${{ secrets.DB_SYNC }}" >> .env
             echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
 
-						# node 관련 환경 설정 가져오기 위해 실행
+		# node 관련 환경 설정 가져오기 위해 실행
             source /home/ubuntu/.nvm/nvm.sh
             # 서버 실행 시크립트 가동!
             source ./run.sh
