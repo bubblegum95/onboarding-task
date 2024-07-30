@@ -89,16 +89,6 @@ describe("UserController", () => {
       roles: [{ authorityName: "ROLE_USER" }],
     };
 
-    const result = {
-      success: true,
-      message: "회원가입을 완료하였습니다.",
-      data: {
-        username: "박승호",
-        nickname: "승호",
-        authorities: ["ROLE_USER"],
-      },
-    };
-
     // Mock bcrypt hash function
     bcrypt.hash.mockResolvedValue("hashedpassword");
 

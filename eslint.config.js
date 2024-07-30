@@ -10,7 +10,12 @@ export default [
       globals: {
         ...globals.browser,
         myCustomGlobal: "readonly",
+        process: "readonly",
       },
+    },
+    rules: {
+      "no-undef": "error",
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^next$" }],
     },
   },
 ];
