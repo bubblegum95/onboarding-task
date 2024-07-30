@@ -55,7 +55,8 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Stash local changes
-        run: git stash
+        run: |
+          git diff --quiet || git stash
       - name: Pull latest changes
         run: git pull origin main
       - name: Apply stashed changes
