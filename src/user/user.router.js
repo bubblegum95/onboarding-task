@@ -1,10 +1,14 @@
 import express from "express";
-import UserController from "../controllers/user.controller.js";
-import { prisma } from "../../prisma/prisma.js";
-import authenticateToken from "../middlewares/authenticate.token.middleware.js";
+import UserController from "./user.controller.js";
+import authenticateToken from "./middlewares/auth-token.middleware.js";
+import UserService from "./user.service.js";
+import UserRepository from "./user.repository.js";
+import prisma from "../../prisma/prisma.js";
 
 const router = express.Router();
-const userController = new UserController(prisma);
+const userRepository = new UserRepository(prisma);
+const userService = new UserService(userRepository);
+const userController = new UserController(userService);
 
 /**
  * @swagger
@@ -49,7 +53,7 @@ const userController = new UserController(prisma);
  *       500:
  *         description: Internal server error.
  */
-router.post("/signup", userController.signUp);
+router.post("/signup", userController.signUp());
 
 /**
  * @swagger

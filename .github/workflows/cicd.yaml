@@ -89,17 +89,20 @@ jobs:
             # 프로젝트 디렉토리로 이동
             cd /home/ubuntu/onboarding-task
 
+            # GitHub에서 최신 코드를 가져옴
+            git pull origin main
+
             # .env 파일 생성
-            cat <<EOF > .env
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
-            PORT=${{ secrets.PORT }}
-            ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }}
-            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
-            EOF
+            # cat <<EOF > .env
+            # DATABASE_URL=${{ secrets.DATABASE_URL }}
+            # PORT=${{ secrets.PORT }}
+            # ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }}
+            # REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
+            # EOF
 
             # node 관련 환경 설정 가져오기 위해 실행
-            source /home/ubuntu/.nvm/nvm.sh
-            nvm use 20
+            # source /home/ubuntu/.nvm/nvm.sh
+            # nvm use 20
 
             # 서버 실행 스크립트 가동!
-            source ./run.sh
+            # source ./run.sh
